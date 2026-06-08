@@ -16,6 +16,7 @@ Usage:
         --context /tmp/context.txt \\
         --output /tmp/review.md
 """
+
 from __future__ import annotations
 
 import argparse
@@ -87,8 +88,9 @@ def main() -> int:
     parser.add_argument("--diff", required=True, type=Path)
     parser.add_argument("--context", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--local", action="store_true", default=False,
-                        help="Prefer local Ollama over Gemini API")
+    parser.add_argument(
+        "--local", action="store_true", default=False, help="Prefer local Ollama over Gemini API"
+    )
     args = parser.parse_args()
 
     diff = args.diff.read_text(encoding="utf-8", errors="replace")

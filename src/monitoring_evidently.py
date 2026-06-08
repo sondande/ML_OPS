@@ -30,7 +30,7 @@ def _build_report(reference: pd.DataFrame, current: pd.DataFrame):
     objects (wrapping pandas DataFrames with a DataDefinition) rather
     than accepting raw DataFrames directly.
     """
-    from evidently import Dataset, DataDefinition, Report
+    from evidently import DataDefinition, Dataset, Report
     from evidently.presets import DataDriftPreset, DataSummaryPreset
 
     # DataDefinition() with no arguments triggers auto-detection of column

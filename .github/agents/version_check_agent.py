@@ -16,6 +16,7 @@ Usage:
         --scan-dir app \\
         --output /tmp/version_report.md
 """
+
 from __future__ import annotations
 
 import argparse
@@ -43,7 +44,7 @@ def _parse_pinned_versions(pyproject_path: Path) -> dict[str, str]:
     versions: dict[str, str] = {}
     for dep in deps:
         # Match:  package==1.2.3  or  package>=1.2.3  etc.
-        m = re.match(r'^([A-Za-z0-9_\-\.]+)([><=!][^,]*)', dep.strip())
+        m = re.match(r"^([A-Za-z0-9_\-\.]+)([><=!][^,]*)", dep.strip())
         if m:
             name = m.group(1).lower().replace("-", "-").replace("_", "-")
             versions[name] = dep.strip()
@@ -56,22 +57,23 @@ def _version_matches_constraint(pinned: str, constraint: str) -> bool:
     Only handles >=X.Y.Z and ==X.Y.Z for simplicity; extend as needed.
     """
     try:
-        from packaging.version import Version
         from packaging.specifiers import SpecifierSet
+        from packaging.version import Version
+
         # Extract just the version number from the pinned dep string
-        m = re.search(r'[=<>!]+([\d\.]+)', pinned)
+        m = re.search(r"[=<>!]+([\d\.]+)", pinned)
         if not m:
             return False
         ver = Version(m.group(1))
         return ver in SpecifierSet(constraint)
     except ImportError:
         # packaging not available — do a simple string check
-        m = re.search(r'[=<>!]+([\d\.]+)', pinned)
+        m = re.search(r"[=<>!]+([\d\.]+)", pinned)
         if not m:
             return False
         pinned_ver = m.group(1)
         # Crude: just check if the constraint major.minor matches
-        c_m = re.search(r'([\d\.]+)', constraint)
+        c_m = re.search(r"([\d\.]+)", constraint)
         if not c_m:
             return True  # can't evaluate, assume applies
         c_ver = c_m.group(1)
@@ -132,14 +134,16 @@ def run_check(
 
                 for lineno, line in enumerate(content.splitlines(), start=1):
                     if compiled.search(line):
-                        violations.append({
-                            "package": pkg,
-                            "pinned": pinned_ver_str,
-                            "file": str(py_file),
-                            "line": lineno,
-                            "code": line.strip(),
-                            "message": message,
-                        })
+                        violations.append(
+                            {
+                                "package": pkg,
+                                "pinned": pinned_ver_str,
+                                "file": str(py_file),
+                                "line": lineno,
+                                "code": line.strip(),
+                                "message": message,
+                            }
+                        )
 
     return violations
 
@@ -177,7 +181,7 @@ def _build_report(violations: list[dict], pinned: dict[str, str]) -> str:
             "",
             f"**File:** `{v['file']}` line {v['line']}",
             "",
-            f"```python",
+            "```python",
             v["code"],
             "```",
             "",

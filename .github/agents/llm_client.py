@@ -13,9 +13,9 @@ Fallback: Local Ollama server (http://localhost:11434)
 The GitHub Models API is OpenAI-compatible, so the same payload format works
 for both providers. Model IDs differ; see GH_MODEL / OLLAMA_MODEL env vars.
 """
+
 from __future__ import annotations
 
-import json
 import os
 import sys
 
@@ -25,13 +25,13 @@ import requests
 # Configuration (override via environment variables)
 # --------------------------------------------------------------------------- #
 # GitHub Models
-GH_TOKEN        = os.environ.get("GITHUB_TOKEN", "")
-GH_MODEL        = os.environ.get("GH_MODEL", "gpt-4o-mini")          # cheap + fast
-GH_ENDPOINT     = "https://models.github.ai/inference/chat/completions"
+GH_TOKEN = os.environ.get("GITHUB_TOKEN", "")
+GH_MODEL = os.environ.get("GH_MODEL", "gpt-4o-mini")  # cheap + fast
+GH_ENDPOINT = "https://models.github.ai/inference/chat/completions"
 
 # Local Ollama (self-hosted runner fallback)
-OLLAMA_URL      = os.environ.get("OLLAMA_URL", "http://localhost:11434")
-OLLAMA_MODEL    = os.environ.get("OLLAMA_MODEL", "llama3.2")
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2")
 
 
 # --------------------------------------------------------------------------- #
@@ -45,8 +45,7 @@ def _call_github_models(prompt: str, system: str = "") -> str:
     """
     if not GH_TOKEN:
         raise RuntimeError(
-            "GITHUB_TOKEN is not set. "
-            "Ensure the workflow has 'models: read' permission."
+            "GITHUB_TOKEN is not set. Ensure the workflow has 'models: read' permission."
         )
 
     messages = []

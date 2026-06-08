@@ -21,6 +21,7 @@ Usage — post-merge apply mode:
         --apply-patch /tmp/arch_patch.md \\
         --arch-file ARCHITECTURE.md
 """
+
 from __future__ import annotations
 
 import argparse
@@ -193,6 +194,7 @@ def apply_patch(patch_path: Path, arch_path: Path) -> None:
         # Find the heading and replace until the next same-level heading
         heading_level = len(heading.split()[0])  # count leading '#'
         import re
+
         pattern = re.compile(
             rf"(^{re.escape(heading)}.*?)(?=^{'#' * heading_level}\s|\Z)",
             re.MULTILINE | re.DOTALL,
@@ -203,7 +205,9 @@ def apply_patch(patch_path: Path, arch_path: Path) -> None:
             print(f"[arch_review_agent] Updated section: {heading[:60]}", file=sys.stderr)
             applied += 1
         else:
-            print(f"[arch_review_agent] Section not found, skipped: {heading[:60]}", file=sys.stderr)
+            print(
+                f"[arch_review_agent] Section not found, skipped: {heading[:60]}", file=sys.stderr
+            )
 
     if applied:
         arch_path.write_text(content, encoding="utf-8")
@@ -225,8 +229,12 @@ def main() -> int:
     parser.add_argument("--apply-patch", type=Path)
     parser.add_argument("--arch-file", type=Path)
     # LLM preference
-    parser.add_argument("--local", action="store_true", default=False,
-                        help="Prefer local Ollama (self-hosted runner mode)")
+    parser.add_argument(
+        "--local",
+        action="store_true",
+        default=False,
+        help="Prefer local Ollama (self-hosted runner mode)",
+    )
     args = parser.parse_args()
 
     if args.apply_patch and args.arch_file:
@@ -236,7 +244,9 @@ def main() -> int:
 
     # PR review mode
     if not all([args.diff, args.source, args.current_arch, args.output_review, args.output_patch]):
-        parser.error("Review mode requires: --diff --source --current-arch --output-review --output-patch")
+        parser.error(
+            "Review mode requires: --diff --source --current-arch --output-review --output-patch"
+        )
 
     diff = args.diff.read_text(encoding="utf-8", errors="replace")
     source = args.source.read_text(encoding="utf-8", errors="replace")
