@@ -23,8 +23,6 @@ jobs:
           version: "latest"
           enable-cache: true
 
-      - name: Install agent dependencies
-        run: sudo uv pip install --system --break-system-packages requests pyyaml tomli
 
       - name: Get PR diff
         run: |
@@ -46,7 +44,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # used by llm_client.py → GitHub Models
         run: |
-          python .github/agents/code_review_agent.py \
+          uv run --with requests --with pyyaml --with tomli python .github/agents/code_review_agent.py \
             --diff /tmp/pr_diff.txt \
             --context /tmp/context.txt \
             --output /tmp/review.md

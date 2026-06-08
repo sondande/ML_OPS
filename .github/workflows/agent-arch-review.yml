@@ -38,8 +38,6 @@ jobs:
         with:
           version: "latest"
 
-      - name: Install agent dependencies
-        run: sudo uv pip install --system --break-system-packages requests pyyaml
 
       - name: Collect diff and source snapshot
         run: |
@@ -54,7 +52,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # used by llm_client.py → GitHub Models
         run: |
-          python .github/agents/arch_review_agent.py \
+          uv run --with requests --with pyyaml python .github/agents/arch_review_agent.py \
             --diff /tmp/arch_diff.txt \
             --source /tmp/full_source.txt \
             --current-arch ARCHITECTURE.md \
@@ -77,7 +75,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          python .github/agents/arch_review_agent.py \
+          uv run --with requests --with pyyaml python .github/agents/arch_review_agent.py \
             --apply-patch /tmp/arch_patch.md \
             --arch-file ARCHITECTURE.md
           git config user.name  "arch-review-agent[bot]"

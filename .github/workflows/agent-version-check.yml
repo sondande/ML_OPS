@@ -29,13 +29,11 @@ jobs:
         with:
           version: "latest"
 
-      - name: Install checker dependencies
-        run: sudo uv pip install --system --break-system-packages tomli pyyaml
 
       - name: Run version compliance check
         id: check
         run: |
-          python .github/agents/version_check_agent.py \
+          uv run --with tomli --with pyyaml python .github/agents/version_check_agent.py \
             --pyproject pyproject.toml \
             --rules .github/agents/version_rules.yaml \
             --scan-dir src \
