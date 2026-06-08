@@ -1,7 +1,10 @@
 # Student Performance Risk Monitoring System
 
-[![CI](https://github.com/campbelltaylor32/ML_OPS/actions/workflows/ci.yml/badge.svg)](https://github.com/campbelltaylor32/ML_OPS/actions/workflows/ci.yml)
-[![Drift](https://github.com/campbelltaylor32/ML_OPS/actions/workflows/drift.yml/badge.svg)](https://github.com/campbelltaylor32/ML_OPS/actions/workflows/drift.yml)
+[![CI](https://github.com/sondande/ML_OPS/actions/workflows/ci.yml/badge.svg)](https://github.com/sondande/ML_OPS/actions/workflows/ci.yml)
+[![Drift Monitoring](https://github.com/sondande/ML_OPS/actions/workflows/drift.yml/badge.svg)](https://github.com/sondande/ML_OPS/actions/workflows/drift.yml)
+[![Agent Arch Review](https://github.com/sondande/ML_OPS/actions/workflows/agent-arch-review.yml/badge.svg)](https://github.com/sondande/ML_OPS/actions/workflows/agent-arch-review.yml)
+[![Agent Code Review](https://github.com/sondande/ML_OPS/actions/workflows/agent-code-review.yml/badge.svg)](https://github.com/sondande/ML_OPS/actions/workflows/agent-code-review.yml)
+[![Agent Version Check](https://github.com/sondande/ML_OPS/actions/workflows/agent-version-check.yml/badge.svg)](https://github.com/sondande/ML_OPS/actions/workflows/agent-version-check.yml)
 
 An end-to-end **Machine Learning Operations (MLOps)** project that predicts a
 student's **Performance Score** from demographic, background, and behavioural
@@ -354,7 +357,7 @@ artifact works end-to-end before sharing or demoing.
 
 ```bash
 # Pull the published image (amd64; Docker Desktop handles emulation on Apple Silicon)
-docker pull --platform linux/amd64 ghcr.io/campbelltaylor32/ml_ops:latest
+docker pull --platform linux/amd64 ghcr.io/sondande/ml_ops:latest
 
 # Use the override file to point all services at the published image
 # Run guard tests against the published image
@@ -419,7 +422,7 @@ Three workflows run automatically:
 | Workflow | Trigger | What it does |
 |---|---|---|
 | `ci.yml` | push / PR → `main` | **lint** (ruff check + format) then **build-test**: builds Docker image, runs `dvc repro` + pytest + smoke tests _inside the image_ |
-| `publish.yml` | push to `main` / version tags | Builds and pushes image to `ghcr.io/campbelltaylor32/ml_ops` with `latest`, `sha-*`, and semver tags |
+| `publish.yml` | push to `main` / version tags | Builds and pushes image to `ghcr.io/sondande/ml_ops` with `latest`, `sha-*`, and semver tags |
 | `drift.yml` | weekly cron (Mon 06:00 UTC) + manual dispatch | Runs monitoring stages inside the published image; uploads `evidently_report.html` + `drift_report.json` as workflow artifacts; uploads to Evidently Cloud if `EVIDENTLY_API_TOKEN` secret is set |
 
 Required repository secrets for full functionality:
