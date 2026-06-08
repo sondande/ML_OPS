@@ -42,3 +42,4 @@ powermetrics_log.txt
 .codegraph/.gitignore
 .codegraph/daemon.pid
 .codegraph/codegraph.lock
+.github/workflows/.antigravitycli/75c55ed0-8329-4321-86b3-5eaa3ca6f138.json

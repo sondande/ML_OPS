@@ -318,39 +318,68 @@ uv run python -m pytest -q
 
 Requires Docker ≥ 24 + Docker Compose v2.
 
+There are two testing modes — use both to cover the full development lifecycle:
+
+### Mode 1 — Local build (dev iteration)
+
+Builds the image from your local `Dockerfile`. Use this while actively developing
+to test your changes before pushing.
+
 ```bash
-# Build all pipeline artifacts via dvc repro (run once; artifacts land on host via bind-mount)
+# Build all pipeline artifacts (run once; artifacts persist to host via bind-mount)
 docker compose run --rm pipeline
 
-# Run guard tests inside the image
+# Run guard tests
 docker compose run --rm test
 
-# Start all three serving services
+# Start the full serving stack
 docker compose up
 
 # Individual services
-docker compose up api          # FastAPI only (http://localhost:8000/docs)
-docker compose up mlflow       # MLflow UI only (http://localhost:5001)
-docker compose up dashboard    # Streamlit only (http://localhost:8501)
+docker compose up api          # FastAPI only     → http://localhost:8000/docs
+docker compose up mlflow       # MLflow UI only   → http://localhost:5001
+docker compose up dashboard    # Streamlit only   → http://localhost:8501
 ```
-
-The `pipeline` and `test` services (profiles: `pipeline`, `test`) are excluded from `docker compose up` so they never auto-start. Run `pipeline` once before launching the serving stack; run `test` to verify artifact integrity.
 
 One-command full verify loop:
 ```bash
 bash scripts/verify_docker.sh   # pipeline → test → smoke
 ```
 
+### Mode 2 — Published image (consumer validation)
+
+Tests exactly what end users pull from GitHub Container Registry — the image
+produced by CI on the last push to `main`. Run this to confirm the published
+artifact works end-to-end before sharing or demoing.
+
+```bash
+# Pull the published image (amd64; Docker Desktop handles emulation on Apple Silicon)
+docker pull --platform linux/amd64 ghcr.io/campbelltaylor32/ml_ops:latest
+
+# Use the override file to point all services at the published image
+# Run guard tests against the published image
+docker compose -f docker-compose.yml -f docker-compose.published.yml --profile test run --rm test
+
+# Start individual UIs against the published image
+docker compose -f docker-compose.yml -f docker-compose.published.yml up mlflow
+docker compose -f docker-compose.yml -f docker-compose.published.yml up api
+docker compose -f docker-compose.yml -f docker-compose.published.yml up dashboard
+
+# Or bring up the full stack
+docker compose -f docker-compose.yml -f docker-compose.published.yml up
+
+# Tear down when done
+docker compose down
+```
+
+> **Note:** `dvc repro` (the `pipeline` service) will deadlock on Apple Silicon due to
+> amd64 emulation + DVC file locking. This is a local-only issue — CI runs natively on
+> amd64 and is unaffected. Since pipeline artifacts already exist on the host via the
+> bind-mount, skip the pipeline step when testing the published image locally.
+
 Health endpoint verified by the compose healthcheck:
 ```
 GET http://localhost:8000/health → {"status":"ok","model":"xgboost",...}
-```
-
-### Pull the published image (optional)
-
-The image is published to GitHub Container Registry on every push to `main`:
-```bash
-docker pull ghcr.io/campbelltaylor32/ml_ops:latest
 ```
 
 ## 8b. Local serving (fallback)

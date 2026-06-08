@@ -1,0 +1,18 @@
+# Overrides build: . to use the published GHCR image for all services.
+# Delete this file to revert to building locally.
+services:
+  pipeline:
+    image: ghcr.io/campbelltaylor32/ml_ops:latest
+    platform: linux/amd64
+  test:
+    image: ghcr.io/campbelltaylor32/ml_ops:latest
+    platform: linux/amd64
+  mlflow:
+    image: ghcr.io/campbelltaylor32/ml_ops:latest
+    platform: linux/amd64
+  api:
+    image: ghcr.io/campbelltaylor32/ml_ops:latest
+    platform: linux/amd64
+  dashboard:
+    image: ghcr.io/campbelltaylor32/ml_ops:latest
+    platform: linux/amd64
