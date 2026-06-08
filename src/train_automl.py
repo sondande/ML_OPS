@@ -17,6 +17,7 @@ Why a single sklearn Pipeline(preprocessor -> model)?
 
 Run:  python -m src.train_automl --time-budget 60
 """
+
 import argparse
 import json
 import time
@@ -59,23 +60,25 @@ def main(time_budget: int = 60):
     mlflow.set_experiment(config.MLFLOW_EXPERIMENT)
 
     with mlflow.start_run(run_name=f"flaml_automl_{int(time.time())}") as run:
-        mlflow.log_params({
-            "time_budget_sec": time_budget,
-            "seed": config.SEED,
-            "n_features": len(config.FEATURES),
-            "n_train": len(X_train),
-            "framework": "FLAML",
-            "task": "regression",
-        })
+        mlflow.log_params(
+            {
+                "time_budget_sec": time_budget,
+                "seed": config.SEED,
+                "n_features": len(config.FEATURES),
+                "n_train": len(X_train),
+                "framework": "FLAML",
+                "task": "regression",
+            }
+        )
 
         # --- Fit preprocessor, then let FLAML pick & tune the algorithm --- #
         pre = build_preprocessor()
         X_train_t = pre.fit_transform(X_train)
-        X_test_t = pre.transform(X_test)
 
         automl = AutoML()
         automl.fit(
-            X_train=X_train_t, y_train=y_train.values,
+            X_train=X_train_t,
+            y_train=y_train.values,
             task="regression",
             metric="rmse",
             time_budget=time_budget,
@@ -90,14 +93,11 @@ def main(time_budget: int = 60):
         print(f"\nAutoML chose: {best_algo}")
         print(f"Best hyperparameters: {json.dumps(best_config, default=str)}")
         mlflow.log_param("automl_best_algorithm", best_algo)
-        mlflow.log_dict(
-            {k: str(v) for k, v in best_config.items()}, "best_hyperparameters.json"
-        )
+        mlflow.log_dict({k: str(v) for k, v in best_config.items()}, "best_hyperparameters.json")
 
         # --- Assemble the deployable pipeline (raw input -> prediction) ---- #
         # pre is already fitted; automl.model.estimator is the fitted best model.
-        final_pipeline = Pipeline([("preprocessor", pre),
-                                   ("model", automl.model.estimator)])
+        final_pipeline = Pipeline([("preprocessor", pre), ("model", automl.model.estimator)])
 
         # --- Evaluate on the held-out test set ----------------------------- #
         preds = final_pipeline.predict(X_test)
@@ -139,7 +139,11 @@ def main(time_budget: int = 60):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--time-budget", type=int, default=60,
-                    help="AutoML search time in seconds (60 is fine for the demo)")
+    ap.add_argument(
+        "--time-budget",
+        type=int,
+        default=60,
+        help="AutoML search time in seconds (60 is fine for the demo)",
+    )
     args = ap.parse_args()
     main(time_budget=args.time_budget)

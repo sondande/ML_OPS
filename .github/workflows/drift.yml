@@ -15,8 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Set image reference
+        id: image
+        run: |
+          REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          echo "ref=ghcr.io/${REPO}:latest" >> "$GITHUB_OUTPUT"
+
       - name: Pull latest image from GHCR
-        run: docker pull ghcr.io/${{ github.repository | downcase }}:latest
+        run: docker pull ${{ steps.image.outputs.ref }}
 
       - name: Run monitoring stages inside image
         run: |
@@ -25,8 +31,9 @@ jobs:
             -e EVIDENTLY_API_TOKEN="${{ secrets.EVIDENTLY_API_TOKEN }}" \
             -e EVIDENTLY_PROJECT_ID="${{ secrets.EVIDENTLY_PROJECT_ID }}" \
             -e EVIDENTLY_CLOUD_URL="https://app.evidently.cloud" \
-            ghcr.io/${{ github.repository | downcase }}:latest \
+            ${{ steps.image.outputs.ref }} \
             sh -c "uv run python -m src.monitoring && uv run python -m src.monitoring_evidently"
+
       - name: Upload drift report artifact
         uses: actions/upload-artifact@v4
         with:
