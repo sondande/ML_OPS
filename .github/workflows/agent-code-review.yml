@@ -24,7 +24,7 @@ jobs:
           enable-cache: true
 
       - name: Install agent dependencies
-        run: uv pip install --system --break-system-packages requests pyyaml tomli
+        run: sudo uv pip install --system --break-system-packages requests pyyaml tomli
 
       - name: Get PR diff
         run: |

@@ -39,7 +39,7 @@ jobs:
           version: "latest"
 
       - name: Install agent dependencies
-        run: uv pip install --system --break-system-packages requests pyyaml
+        run: sudo uv pip install --system --break-system-packages requests pyyaml
 
       - name: Collect diff and source snapshot
         run: |

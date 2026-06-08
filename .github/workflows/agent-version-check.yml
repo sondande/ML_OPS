@@ -30,7 +30,7 @@ jobs:
           version: "latest"
 
       - name: Install checker dependencies
-        run: uv pip install --system --break-system-packages tomli pyyaml
+        run: sudo uv pip install --system --break-system-packages tomli pyyaml
 
       - name: Run version compliance check
         id: check
