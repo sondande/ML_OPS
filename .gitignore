@@ -41,3 +41,4 @@ powermetrics_log.txt
 .cursor/rules/codegraph.mdc
 .codegraph/.gitignore
 .codegraph/daemon.pid
+.codegraph/codegraph.lock
