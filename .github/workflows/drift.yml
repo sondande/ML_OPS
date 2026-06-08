@@ -21,10 +21,29 @@ jobs:
           REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           echo "ref=ghcr.io/${REPO}:latest" >> "$GITHUB_OUTPUT"
 
-      - name: Pull latest image from GHCR
-        run: docker pull ${{ steps.image.outputs.ref }}
+      # Fix 2: Pull with fallback build so the job never fails on a missing tag.
+      # The :latest tag is published by the CI publish job on every push to main.
+      # If this is a fresh fork or the publish job hasn't run yet, build locally.
+      - name: Pull latest image from GHCR (build locally if absent)
+        run: |
+          docker pull ${{ steps.image.outputs.ref }} || {
+            echo "GHCR image not found — building locally as fallback"
+            docker build -t ${{ steps.image.outputs.ref }} .
+          }
 
-      - name: Run monitoring stages inside image
+      # Fix 3: Run the full DVC pipeline inside the container.
+      # The bind-mount ($(pwd):/app) makes generated artifacts land on the host
+      # for the upload step below. DVC skips unchanged stages via dvc.lock, so
+      # on subsequent weekly runs only truly stale stages are re-executed.
+      #
+      # Why dvc repro instead of calling scripts directly:
+      #   - DVC-tracked deps (test.csv, test_modified.csv, best_model.pkl) are
+      #     NOT in the git checkout; they must be regenerated or pulled.
+      #   - Without a configured DVC remote in this workflow, dvc repro is the
+      #     correct way to materialise them from source.
+      #   - To speed this up, configure a DVC remote (S3/GCS/Azure) and add a
+      #     `dvc pull` step with appropriate credentials before this step.
+      - name: Run pipeline + monitoring stages inside image
         run: |
           docker run --rm \
             -v "$(pwd):/app" \
@@ -32,7 +51,7 @@ jobs:
             -e EVIDENTLY_PROJECT_ID="${{ secrets.EVIDENTLY_PROJECT_ID }}" \
             -e EVIDENTLY_CLOUD_URL="https://app.evidently.cloud" \
             ${{ steps.image.outputs.ref }} \
-            sh -c "uv run python -m src.monitoring && uv run python -m src.monitoring_evidently"
+            sh -c "uv run dvc repro"
 
       - name: Upload drift report artifact
         uses: actions/upload-artifact@v4

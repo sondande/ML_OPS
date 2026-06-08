@@ -1,0 +1,88 @@
+name: Agent — Architecture Review
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "app/**"
+      - "dvc.yaml"
+      - "docker-compose.yml"
+      - ".github/workflows/**"
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "app/**"
+      - "dvc.yaml"
+      - "docker-compose.yml"
+  workflow_dispatch:
+
+jobs:
+  arch-review:
+    # Run on ubuntu-latest (GitHub Models via GITHUB_TOKEN).
+    # To use free local Ollama instead, register a self-hosted runner and
+    # change runs-on to [self-hosted, local, mac] then pass --local flag.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      models: read      # grants access to GitHub Models API via GITHUB_TOKEN
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Install agent dependencies
+        run: uv pip install --system requests pyyaml
+
+      - name: Collect diff and source snapshot
+        run: |
+          git diff origin/main...HEAD > /tmp/arch_diff.txt
+          find src app -name '*.py' | sort | xargs cat > /tmp/full_source.txt
+          {
+            echo "=== dvc.yaml ==="; cat dvc.yaml
+            echo "=== docker-compose.yml ==="; cat docker-compose.yml
+          } >> /tmp/full_source.txt
+
+      - name: Run multi-persona architecture review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # used by llm_client.py → GitHub Models
+        run: |
+          python .github/agents/arch_review_agent.py \
+            --diff /tmp/arch_diff.txt \
+            --source /tmp/full_source.txt \
+            --current-arch ARCHITECTURE.md \
+            --output-review /tmp/arch_review.md \
+            --output-patch /tmp/arch_patch.md
+
+      - name: Post review comment on PR
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body "$(cat /tmp/arch_review.md)"
+
+      # Auto-commit ARCHITECTURE.md updates after a merge to main.
+      # The bot uses the standard github-actions[bot] identity so it shows
+      # up as a bot commit, not a human contributor.
+      - name: Auto-update ARCHITECTURE.md on merge to main
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python .github/agents/arch_review_agent.py \
+            --apply-patch /tmp/arch_patch.md \
+            --arch-file ARCHITECTURE.md
+          git config user.name  "arch-review-agent[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ARCHITECTURE.md
+          git diff --cached --quiet || \
+            git commit -m "docs(arch): auto-update ARCHITECTURE.md [agent]" && \
+            git push

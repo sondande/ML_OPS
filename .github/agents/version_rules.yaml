@@ -1,0 +1,76 @@
+# version_rules.yaml
+# ==================
+# Library-specific API compatibility rules.
+#
+# Maintenance contract:
+#   When you upgrade a dependency in pyproject.toml, add or update rules here
+#   in the SAME pull request. The version-check agent enforces both changes
+#   arrive together.
+#
+# Each rule:
+#   package:             matches the key in pyproject.toml [project.dependencies]
+#   version_constraint:  semver range this rule applies to (>=, ==, <, etc.)
+#   forbidden_patterns:  regex patterns that indicate legacy API usage
+#   message:             human-readable explanation + migration hint
+
+rules:
+  # ── Evidently 0.7.x ─────────────────────────────────────────────────────── #
+  - package: evidently
+    version_constraint: ">=0.7.0"
+    forbidden_patterns:
+      - pattern: 'report\.run\(\s*reference_data\s*=\s*(?!.*Dataset)'
+        message: |
+          evidently>=0.7 requires Dataset.from_pandas() wrappers, not raw DataFrames.
+          Migration: use Dataset.from_pandas(df, data_definition=DataDefinition())
+          and pass the Dataset objects to report.run().
+
+      - pattern: 'DataQualityPreset'
+        message: |
+          DataQualityPreset was removed in evidently>=0.7.
+          Use DataSummaryPreset instead.
+
+      - pattern: 'from evidently\.ui\.workspace import CloudWorkspace'
+        message: |
+          CloudWorkspace moved to evidently.ui.workspace.cloud in evidently>=0.7.
+          Use: from evidently.ui.workspace.cloud import CloudWorkspace
+
+      - pattern: 'ws\.verify\(\)'
+        message: |
+          CloudWorkspace.verify() was removed in Evidently Cloud v2 (evidently>=0.7).
+          Remove this call; authentication is checked lazily on first API call.
+
+  # ── MLflow 3.x ──────────────────────────────────────────────────────────── #
+  - package: mlflow
+    version_constraint: ">=3.0.0"
+    forbidden_patterns:
+      - pattern: 'mlflow\.sklearn\.log_model.*registered_model_name'
+        message: |
+          In mlflow>=3 the registered_model_name kwarg was removed from log_model.
+          Register separately: mlflow.register_model(model_uri, name)
+
+      - pattern: 'MlflowClient\(\).transition_model_version_stage'
+        message: |
+          Model stage transitions removed in mlflow>=3 (stages deprecated).
+          Use model aliases instead: client.set_registered_model_alias()
+
+  # ── pandas 2.x ──────────────────────────────────────────────────────────── #
+  - package: pandas
+    version_constraint: ">=2.0.0"
+    forbidden_patterns:
+      - pattern: '\.append\('
+        message: |
+          DataFrame.append() was removed in pandas>=2.0.
+          Use pd.concat([df1, df2], ignore_index=True) instead.
+
+      - pattern: 'pd\.DataFrame\.swaplevel'
+        message: |
+          DataFrame.swaplevel() signature changed in pandas>=2; verify axis kwarg.
+
+  # ── scikit-learn 1.x ────────────────────────────────────────────────────── #
+  - package: scikit-learn
+    version_constraint: ">=1.2.0"
+    forbidden_patterns:
+      - pattern: 'from sklearn.utils import safe_indexing'
+        message: |
+          safe_indexing removed in sklearn>=1.2. Use _safe_indexing from
+          sklearn.utils._indexing or standard numpy indexing.

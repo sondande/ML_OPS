@@ -1,0 +1,68 @@
+name: Agent — Version Compliance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**/*.py"
+      - "app/**/*.py"
+      - "pyproject.toml"
+      - "requirements.txt"
+      - ".github/agents/version_rules.yaml"
+  schedule:
+    - cron: "0 4 * * 3"   # Wednesday 04:00 UTC — catches API drift without a PR
+  workflow_dispatch:
+
+jobs:
+  version-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # No project venv needed — the checker only uses stdlib + lightweight deps.
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Install checker dependencies
+        run: uv pip install --system tomli pyyaml
+
+      - name: Run version compliance check
+        id: check
+        run: |
+          python .github/agents/version_check_agent.py \
+            --pyproject pyproject.toml \
+            --rules .github/agents/version_rules.yaml \
+            --scan-dir src \
+            --scan-dir app \
+            --output /tmp/version_report.md
+        continue-on-error: true
+
+      - name: Post findings as PR comment
+        if: steps.check.outcome == 'failure' && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body "$(cat /tmp/version_report.md)"
+
+      - name: Open issue for scheduled compliance drift
+        if: steps.check.outcome == 'failure' && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh issue create \
+            --title "Version compliance drift detected ($(date +%Y-%m-%d))" \
+            --body "$(cat /tmp/version_report.md)" \
+            --label "agent,compliance"
+
+      # Fail the workflow so this becomes a blocking required status check.
+      # Configure in: Settings → Branches → main → Require status checks
+      - name: Fail on violations
+        if: steps.check.outcome == 'failure'
+        run: exit 1

@@ -1,7 +1,12 @@
 """
 monitoring_evidently.py  --  Evidently drift + data quality report
 ==============================================================================
-Uses DataDriftPreset + DataQualityPreset for Evidently 0.6.7.
+Uses DataDriftPreset + DataSummaryPreset for Evidently >=0.7.0.
+
+Migration note (0.6.x -> 0.7.x):
+  - Report.run() no longer accepts raw pandas DataFrames.
+  - Data must be wrapped in evidently.Dataset with a DataDefinition.
+  - Evidently Cloud v2 requires evidently>=0.7; CloudWorkspace API updated.
 
 Cloud upload is token-gated: set EVIDENTLY_API_TOKEN env var to enable.
 Offline / no-token path always works and writes a local HTML report.
@@ -19,10 +24,21 @@ from src import config
 
 def _build_report(reference: pd.DataFrame, current: pd.DataFrame):
     """
-    Build and run an Evidently report using the legacy Evidently 0.6.7 API.
+    Build and run an Evidently report using the Evidently >=0.7.0 API.
+
+    Key change from 0.6.x: Report.run() now requires evidently.Dataset
+    objects (wrapping pandas DataFrames with a DataDefinition) rather
+    than accepting raw DataFrames directly.
     """
-    from evidently import Report
+    from evidently import Dataset, DataDefinition, Report
     from evidently.presets import DataDriftPreset, DataSummaryPreset
+
+    # DataDefinition() with no arguments triggers auto-detection of column
+    # types (numeric vs categorical) from the DataFrame dtypes.
+    data_definition = DataDefinition()
+
+    ref_dataset = Dataset.from_pandas(reference, data_definition=data_definition)
+    cur_dataset = Dataset.from_pandas(current, data_definition=data_definition)
 
     report = Report(
         metrics=[
@@ -31,7 +47,7 @@ def _build_report(reference: pd.DataFrame, current: pd.DataFrame):
         ]
     )
 
-    return report.run(reference_data=reference, current_data=current)
+    return report.run(reference_data=ref_dataset, current_data=cur_dataset)
 
 
 def _save_local(snapshot, out: Path) -> Path:
@@ -45,8 +61,10 @@ def _save_local(snapshot, out: Path) -> Path:
 
 def _upload_cloud(snapshot) -> bool:
     """
-    Try to upload the Evidently report to Evidently Cloud.
+    Try to upload the Evidently report to Evidently Cloud v2.
 
+    Evidently Cloud v2 requires evidently>=0.7.0. The workspace API
+    changed between v1 and v2; this function targets the v2 interface.
     If anything fails, continue in local-only mode.
     """
     token = getattr(config, "EVIDENTLY_API_TOKEN", None)
@@ -57,14 +75,16 @@ def _upload_cloud(snapshot) -> bool:
         return False
 
     try:
-        from evidently.ui.workspace import CloudWorkspace
+        from evidently.ui.workspace.cloud import CloudWorkspace  # evidently>=0.7
+    except ImportError:
+        try:
+            from evidently.ui.workspace import CloudWorkspace  # evidently 0.6 fallback
+        except ImportError:
+            print("Evidently Cloud: CloudWorkspace not available in this version.")
+            return False
 
-        if url:
-            ws = CloudWorkspace(token=token, url=url)
-        else:
-            ws = CloudWorkspace(token=token)
-
-        ws.verify()
+    try:
+        ws = CloudWorkspace(token=token, url=url) if url else CloudWorkspace(token=token)
 
         if project_id:
             ws.add_run(project_id, snapshot)

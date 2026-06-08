@@ -1,0 +1,60 @@
+name: Agent — Code Review
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      models: read      # grants access to GitHub Models API via GITHUB_TOKEN
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+          enable-cache: true
+
+      - name: Install agent dependencies
+        run: uv pip install --system requests pyyaml tomli
+
+      - name: Get PR diff
+        run: |
+          git diff origin/main...HEAD -- '*.py' '*.yml' '*.yaml' > /tmp/pr_diff.txt
+          echo "Diff size: $(wc -c < /tmp/pr_diff.txt) bytes"
+
+      - name: Load grounding context
+        run: |
+          {
+            echo "=== pyproject.toml ==="
+            cat pyproject.toml
+            echo "\n=== src/config.py ==="
+            cat src/config.py
+            echo "\n=== dvc.yaml ==="
+            cat dvc.yaml
+          } > /tmp/context.txt
+
+      - name: Run LLM code review
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # used by llm_client.py → GitHub Models
+        run: |
+          python .github/agents/code_review_agent.py \
+            --diff /tmp/pr_diff.txt \
+            --context /tmp/context.txt \
+            --output /tmp/review.md
+
+      - name: Post review comment
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} \
+            --body "$(cat /tmp/review.md)"
