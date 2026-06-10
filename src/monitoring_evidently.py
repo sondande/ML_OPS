@@ -77,11 +77,8 @@ def _upload_cloud(snapshot) -> bool:
     try:
         from evidently.ui.workspace.cloud import CloudWorkspace  # evidently>=0.7
     except ImportError:
-        try:
-            from evidently.ui.workspace import CloudWorkspace  # evidently 0.6 fallback
-        except ImportError:
-            print("Evidently Cloud: CloudWorkspace not available in this version.")
-            return False
+        print("Evidently Cloud: CloudWorkspace not available in this version.")
+        return False
 
     try:
         ws = CloudWorkspace(token=token, url=url) if url else CloudWorkspace(token=token)

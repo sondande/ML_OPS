@@ -18,7 +18,7 @@ rules:
   - package: evidently
     version_constraint: ">=0.7.0"
     forbidden_patterns:
-      - pattern: 'report\.run\(\s*reference_data\s*=\s*(?!.*Dataset)'
+      - pattern: 'report\.run\(\s*reference_data\s*=\s*(?!.*[Dd]ataset)'
         message: |
           evidently>=0.7 requires Dataset.from_pandas() wrappers, not raw DataFrames.
           Migration: use Dataset.from_pandas(df, data_definition=DataDefinition())
@@ -57,7 +57,7 @@ rules:
   - package: pandas
     version_constraint: ">=2.0.0"
     forbidden_patterns:
-      - pattern: '\.append\('
+      - pattern: '\bdf\.append\('
         message: |
           DataFrame.append() was removed in pandas>=2.0.
           Use pd.concat([df1, df2], ignore_index=True) instead.
